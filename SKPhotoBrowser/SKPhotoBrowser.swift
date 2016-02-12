@@ -554,6 +554,12 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
                     self.view.alpha = 1.0
                     self.pagingScrollView.alpha = 1.0
                     self.resizableImageView.alpha = 0.0
+                    
+                    let page = self.pageDisplayedAtIndex(self.currentPageIndex)
+                    if page.photo.underlyingImage == nil {
+                        page.photo = SKPhoto(image: self.senderOriginImage)
+                    }
+                    
                     fadeView.removeFromSuperview()
             })
             
