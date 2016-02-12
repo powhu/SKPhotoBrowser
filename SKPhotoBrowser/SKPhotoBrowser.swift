@@ -93,6 +93,16 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         return photos.count
     }
     
+    public func appendPhotos(photos : [AnyObject]) {
+        for anyObject in photos {
+            if let photo = anyObject as? SKPhotoProtocol {
+                photo.checkCache()
+                self.photos.append(photo)
+            }
+        }
+        performLayout()
+    }
+    
     // MARK - Initializer
     required public init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
@@ -286,19 +296,12 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
     }
     
     public func loadAdjacentPhotosIfNecessary(photo: SKPhotoProtocol) {
-        let page = pageDisplayingAtPhoto(photo)
-        let pageIndex = (page.tag - pageIndexTagOffset)
+        
+        guard let pageIndex = photos.indexOf({$0===photo}) else { return }
         if currentPageIndex == pageIndex {
-            if pageIndex > 0 {
-                // Preload index - 1
-                let previousPhoto = photoAtIndex(pageIndex - 1)
-                if previousPhoto.underlyingImage == nil {
-                    previousPhoto.loadUnderlyingImageAndNotify()
-                }
-            }
-            if pageIndex < numberOfPhotos - 1 {
-                // Preload index + 1
-                let nextPhoto = photoAtIndex(pageIndex + 1)
+            for i in 1...5 {
+                if i + pageIndex > photos.count - 1 { break }
+                let nextPhoto = photoAtIndex(pageIndex + i)
                 if nextPhoto.underlyingImage == nil {
                     nextPhoto.loadUnderlyingImageAndNotify()
                 }
@@ -340,10 +343,12 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         updateToolbar()
         
         // reset local cache
-        visiblePages.removeAll()
+        //visiblePages.removeAll()
         
         // set content offset
         pagingScrollView.contentOffset = contentOffsetForPageAtIndex(currentPageIndex)
+        // set content size
+        pagingScrollView.contentSize = contentSizeForPagingScrollView()
         
         // tile page
         tilePages()
@@ -904,6 +909,7 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         if currentPageIndex != previousCurrentPage {
             didStartViewingPageAtIndex(currentPageIndex)
             updateToolbar()
+            loadAdjacentPhotosIfNecessary(photoAtIndex(currentPageIndex))
         }
     }
     

@@ -12,6 +12,7 @@ import SKPhotoBrowser
 class ViewController: UIViewController, UICollectionViewDataSource, UICollectionViewDelegate, SKPhotoBrowserDelegate {
 
     @IBOutlet weak var collectionView: UICollectionView!
+    var browser : SKPhotoBrowser?
     var images = [SKPhoto]()
     var caption = ["Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
                    "Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book",
@@ -30,7 +31,7 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        for i in 0..<30 {
+        for i in 0..<5 {
             let photo = SKPhoto.photoWithImage(UIImage(named: "image\(i%10).jpg")!)
             photo.caption = caption[i%10]
             images.append(photo)
@@ -73,17 +74,32 @@ class ViewController: UIViewController, UICollectionViewDataSource, UICollection
         guard let originImage = cell.exampleImageView.image else {
             return
         }
-        let browser = SKPhotoBrowser(originImage: originImage, photos: images, animatedFromView: cell)
-        browser.initializePageIndex(indexPath.row)
-        browser.delegate = self
+        browser = SKPhotoBrowser(originImage: originImage, photos: images, animatedFromView: cell)
+        browser!.initializePageIndex(indexPath.row)
+        browser!.delegate = self
         
         // Can hide the action button by setting to false
-        browser.displayAction = true
+        browser!.displayAction = true
         
         // Optional action button titles (if left off, it uses activity controller
         // browser.actionButtonTitles = ["Do One Action", "Do Another Action"]
         
-        presentViewController(browser, animated: true, completion: {})
+        presentViewController(browser!, animated: true, completion: {})
+        
+        performSelector("appendPhoto", withObject: nil, afterDelay: 1)
+        
+    }
+    
+    func appendPhoto() {
+        var photos = [SKPhoto]()
+        for i in 0..<5 {
+            let photo = SKPhoto.photoWithImage(UIImage(named: "image\(i%10).jpg")!)
+            photo.caption = caption[i%10]
+            photos.append(photo)
+        }
+        images.appendContentsOf(photos)
+        collectionView.reloadData()
+        browser!.appendPhotos(photos)
     }
     
     // MARK: - SKPhotoBrowserDelegate
