@@ -20,16 +20,16 @@ public let SKPHOTO_LOADING_DID_END_NOTIFICATION = "photoLoadingDidEndNotificatio
 
 // MARK: - SKPhotoBrowser
 public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionSheetDelegate {
-
+    
     final let pageIndexTagOffset: Int = 1000
     // animation property
     final let animationDuration: Double = 0.35
-
+    
     // device property
-    final let screenBound = UIScreen.mainScreen().bounds
+    final let screenBound = UIApplication.sharedApplication().delegate!.window!!.bounds
     var screenWidth: CGFloat { return screenBound.size.width }
     var screenHeight: CGFloat { return screenBound.size.height }
-
+    
     // custom abilities
     public var displayAction: Bool = true
     public var shareExtraCaption: String? = nil
@@ -39,11 +39,11 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
     public var displayBackAndForwardButton: Bool = true
     public var disableVerticalSwipe: Bool = false
     public var isForceStatusBarHidden: Bool = false
-
+    
     // actions
     private var actionSheet: UIActionSheet!
     private var activityViewController: UIActivityViewController!
-
+    
     // tool for controls
     private var applicationWindow: UIWindow!
     private var toolBar: UIToolbar!
@@ -55,44 +55,44 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
     private var pagingScrollView: UIScrollView!
     private var panGesture: UIPanGestureRecognizer!
     private var doneButton: UIButton!
-    private var doneButtonShowFrame: CGRect = CGRect(x: 5, y: 5, width: 44, height: 44)
+    private var doneButtonShowFrame: CGRect = CGRect(x: 5, y: 25, width: 44, height: 44)
     private var doneButtonHideFrame: CGRect = CGRect(x: 5, y: -20, width: 44, height: 44)
-
+    
     // photo's paging
     private var visiblePages: Set<SKZoomingScrollView> = Set()
     private var initialPageIndex: Int = 0
     private var currentPageIndex: Int = 0
-
+    
     // senderView's property
     private var senderViewForAnimation: UIView?
     private var senderViewOriginalFrame: CGRect = CGRectZero
     private var senderOriginImage: UIImage!
-
+    
     private var resizableImageView: UIImageView = UIImageView()
-
+    
     // for status check property
     private var isDraggingPhoto: Bool = false
     private var isEndAnimationByToolBar: Bool = true
     private var isViewActive: Bool = false
     private var isPerformingLayout: Bool = false
     private var isStatusBarOriginallyHidden: Bool = false
-
+    
     // scroll property
     private var firstX: CGFloat = 0.0
     private var firstY: CGFloat = 0.0
-
+    
     // timer
     private var controlVisibilityTimer: NSTimer!
-
+    
     // delegate
     public weak var delegate: SKPhotoBrowserDelegate?
-
+    
     // photos
     var photos: [SKPhotoProtocol] = [SKPhotoProtocol]()
     var numberOfPhotos: Int {
         return photos.count
     }
-
+    
     public func appendPhotos(photos : [AnyObject]) {
         for anyObject in photos {
             if let photo = anyObject as? SKPhotoProtocol {
@@ -102,18 +102,18 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         }
         performLayout()
     }
-
+    
     // MARK - Initializer
     required public init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
         setup()
     }
-
+    
     public override init(nibName nibNameOrNil: String!, bundle nibBundleOrNil: NSBundle!) {
         super.init(nibName: nil, bundle: nil)
         setup()
     }
-
+    
     public convenience init(photos:[ AnyObject]) {
         self.init(nibName: nil, bundle: nil)
         for anyObject in photos {
@@ -135,29 +135,33 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
             }
         }
     }
-
+    
     deinit {
         pagingScrollView = nil
         NSNotificationCenter.defaultCenter().removeObserver(self)
     }
 
+    override public func preferredStatusBarStyle() -> UIStatusBarStyle {
+        return .LightContent
+    }
+    
     func setup() {
         applicationWindow = (UIApplication.sharedApplication().delegate?.window)!
-
+        
         modalPresentationStyle = UIModalPresentationStyle.Custom
         modalPresentationCapturesStatusBarAppearance = true
         modalTransitionStyle = UIModalTransitionStyle.CrossDissolve
-
+        
         NSNotificationCenter.defaultCenter().addObserver(self, selector: "handleSKPhotoLoadingDidEndNotification:", name: SKPHOTO_LOADING_DID_END_NOTIFICATION, object: nil)
     }
-
+    
     // MARK: - override
     public override func viewDidLoad() {
         super.viewDidLoad()
-
+        
         view.backgroundColor = UIColor.blackColor()
         view.clipsToBounds = true
-
+        
         // setup paging
         let pagingScrollViewFrame = frameForPagingScrollView()
         pagingScrollView = UIScrollView(frame: pagingScrollViewFrame)
@@ -168,7 +172,7 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         pagingScrollView.backgroundColor = UIColor.blackColor()
         pagingScrollView.contentSize = contentSizeForPagingScrollView()
         view.addSubview(pagingScrollView)
-
+        
         // toolbar
         toolBar = UIToolbar(frame: frameForToolbarAtOrientation())
         toolBar.backgroundColor = UIColor.clearColor()
@@ -176,11 +180,11 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         toolBar.translucent = true
         toolBar.setBackgroundImage(UIImage(), forToolbarPosition: .Any, barMetrics: .Default)
         view.addSubview(toolBar)
-
+        
         if !displayToolbar {
             toolBar.hidden = true
         }
-
+        
         // arrows:back
         let bundle = NSBundle(forClass: SKPhotoBrowser.self)
         let previousBtn = UIButton(type: .Custom)
@@ -191,7 +195,7 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         previousBtn.addTarget(self, action: "gotoPreviousPage", forControlEvents: .TouchUpInside)
         previousBtn.contentMode = .Center
         toolPreviousButton = UIBarButtonItem(customView: previousBtn)
-
+        
         // arrows:next
         let nextBtn = UIButton(type: .Custom)
         let nextImage = UIImage(named: "SKPhotoBrowser.bundle/images/btn_common_forward_wh", inBundle: bundle, compatibleWithTraitCollection: nil) ?? UIImage()
@@ -201,71 +205,73 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         nextBtn.addTarget(self, action: "gotoNextPage", forControlEvents: .TouchUpInside)
         nextBtn.contentMode = .Center
         toolNextButton = UIBarButtonItem(customView: nextBtn)
-
+        
         toolCounterLabel = UILabel(frame: CGRect(x: 0, y: 0, width: 95, height: 40))
         toolCounterLabel.textAlignment = .Center
-        toolCounterLabel.backgroundColor = UIColor.clearColor()
+        toolCounterLabel.backgroundColor = .clearColor()
         toolCounterLabel.font  = UIFont(name: "Helvetica", size: 16.0)
         toolCounterLabel.textColor = UIColor.whiteColor()
-        toolCounterLabel.shadowColor = UIColor.darkTextColor()
-        toolCounterLabel.shadowOffset = CGSize(width: 0.0, height: 1.0)
+        toolCounterLabel.shadowColor = .clearColor()
+        toolCounterLabel.shadowOffset = CGSize(width: 0.0, height: 0.0)
 
         toolCounterButton = UIBarButtonItem(customView: toolCounterLabel)
-
+        
         // close
         let doneImage = UIImage(named: "SKPhotoBrowser.bundle/images/btn_common_close_wh", inBundle: bundle, compatibleWithTraitCollection: nil) ?? UIImage()
         doneButton = UIButton(type: UIButtonType.Custom)
         doneButton.setImage(doneImage, forState: UIControlState.Normal)
         doneButton.frame = doneButtonHideFrame
         doneButton.imageEdgeInsets = UIEdgeInsetsMake(15.25, 15.25, 15.25, 15.25)
-        doneButton.backgroundColor = .clearColor()
+        doneButton.backgroundColor = UIColor(white: 0, alpha: 0.4)
+        doneButton.layer.cornerRadius = 6
         doneButton.addTarget(self, action: "doneButtonPressed:", forControlEvents: UIControlEvents.TouchUpInside)
         doneButton.alpha = 0.0
         view.addSubview(doneButton)
-
+        
         // action button
         toolActionButton = UIBarButtonItem(barButtonSystemItem: .Action, target: self, action: "actionButtonPressed")
         toolActionButton.tintColor = .whiteColor()
-
+        
         // gesture
         panGesture = UIPanGestureRecognizer(target: self, action: "panGestureRecognized:")
         panGesture.minimumNumberOfTouches = 1
         panGesture.maximumNumberOfTouches = 1
-
-
+        
+        
         // transition (this must be last call of view did load.)
         performPresentAnimation()
     }
-
+    
+    
     public override func viewWillAppear(animated: Bool) {
         super.viewWillAppear(true)
         reloadData()
     }
-
+    
     public override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
-
+        
         isPerformingLayout = true
-
+        
         pagingScrollView.frame = frameForPagingScrollView()
         pagingScrollView.contentSize = contentSizeForPagingScrollView()
         pagingScrollView.contentOffset = contentOffsetForPageAtIndex(currentPageIndex)
-
+        
         toolBar.frame = frameForToolbarAtOrientation()
-
+        
         isPerformingLayout = false
     }
-
+    
     public override func viewDidAppear(animated: Bool) {
         super.viewDidAppear(true)
         isViewActive = true
     }
-
+    
     public override func prefersStatusBarHidden() -> Bool {
         if isForceStatusBarHidden {
             return true
         }
-
+        
         if isDraggingPhoto {
             if isStatusBarOriginallyHidden {
                 return true
@@ -276,10 +282,10 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
             return areControlsHidden()
         }
     }
-
+    
     // MARK: - notification
     public func handleSKPhotoLoadingDidEndNotification(notification: NSNotification) {
-
+        
         guard let photo = notification.object as? SKPhotoProtocol else {
             return
         }
@@ -294,9 +300,9 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
             page.displayImageFailure()
         }
     }
-
+    
     public func loadAdjacentPhotosIfNecessary(photo: SKPhotoProtocol) {
-
+        
         guard let pageIndex = photos.indexOf({$0===photo}) else { return }
         if currentPageIndex == pageIndex {
             for i in 1...5 {
@@ -308,16 +314,16 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
             }
         }
     }
-
+    
     // MARK: - initialize / setup
     public func reloadData() {
         performLayout()
         view.setNeedsLayout()
     }
-
+    
     public func performLayout() {
         isPerformingLayout = true
-
+        
         // for tool bar
         let flexSpace = UIBarButtonItem(barButtonSystemItem: .FlexibleSpace, target: self, action: nil)
         var items = [UIBarButtonItem]()
@@ -341,34 +347,34 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         }
         toolBar.setItems(items, animated: false)
         updateToolbar()
-
+        
         // reset local cache
         //visiblePages.removeAll()
-
+        
         // set content offset
         pagingScrollView.contentOffset = contentOffsetForPageAtIndex(currentPageIndex)
         // set content size
         pagingScrollView.contentSize = contentSizeForPagingScrollView()
-
+        
         // tile page
         tilePages()
         didStartViewingPageAtIndex(currentPageIndex)
-
+        
         isPerformingLayout = false
-
+        
         // add pangesture if need
         if !disableVerticalSwipe {
             view.addGestureRecognizer(panGesture)
         }
-
+        
     }
-
+    
     public func prepareForClosePhotoBrowser() {
         applicationWindow.removeGestureRecognizer(panGesture)
         NSObject.cancelPreviousPerformRequestsWithTarget(self)
         delegate?.willDismissAtPageIndex?(currentPageIndex)
     }
-
+    
     // MARK: - frame calculation
     public func frameForPagingScrollView() -> CGRect {
         var frame = view.bounds
@@ -376,36 +382,36 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         frame.size.width += (2 * 10)
         return frame
     }
-
+    
     public func frameForToolbarAtOrientation() -> CGRect {
         let currentOrientation = UIApplication.sharedApplication().statusBarOrientation
         var height: CGFloat = navigationController?.navigationBar.frame.size.height ?? 44
         if UIInterfaceOrientationIsLandscape(currentOrientation) {
             height = 32
         }
-
+        
         return CGRect(x: 0, y: view.bounds.size.height - height, width: view.bounds.size.width, height: height)
     }
-
+    
     public func frameForToolbarHideAtOrientation() -> CGRect {
         let currentOrientation = UIApplication.sharedApplication().statusBarOrientation
         var height: CGFloat = navigationController?.navigationBar.frame.size.height ?? 44
         if UIInterfaceOrientationIsLandscape(currentOrientation) {
             height = 32
         }
-
+        
         return CGRect(x: 0, y: view.bounds.size.height + height, width: view.bounds.size.width, height: height)
     }
-
+    
     public func frameForCaptionView(captionView: SKCaptionView, index: Int) -> CGRect{
         let pageFrame = frameForPageAtIndex(index)
         let captionSize = captionView.sizeThatFits(CGSize(width: pageFrame.size.width, height: 0))
         let navHeight = navigationController?.navigationBar.frame.size.height ?? 44
-
+        
         return CGRect(x: pageFrame.origin.x, y: pageFrame.size.height - captionSize.height - navHeight,
-            width: pageFrame.size.width, height: captionSize.height)
+                      width: pageFrame.size.width, height: captionSize.height)
     }
-
+    
     public func frameForPageAtIndex(index: Int) -> CGRect {
         let bounds = pagingScrollView.bounds
         var pageFrame = bounds
@@ -413,18 +419,18 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         pageFrame.origin.x = (bounds.size.width * CGFloat(index)) + 10
         return pageFrame
     }
-
+    
     public func contentOffsetForPageAtIndex(index: Int) -> CGPoint {
         let pageWidth = pagingScrollView.bounds.size.width
         let newOffset = CGFloat(index) * pageWidth
         return CGPoint(x: newOffset, y: 0)
     }
-
+    
     public func contentSizeForPagingScrollView() -> CGSize {
         let bounds = pagingScrollView.bounds
         return CGSize(width: bounds.size.width * CGFloat(numberOfPhotos), height: bounds.size.height)
     }
-
+    
     // MARK: - Toolbar
     public func updateToolbar() {
         if numberOfPhotos > 1 {
@@ -432,37 +438,37 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         } else {
             toolCounterLabel.text = nil
         }
-
+        
         toolPreviousButton.enabled = (currentPageIndex > 0)
         toolNextButton.enabled = (currentPageIndex < numberOfPhotos - 1)
     }
-
+   
     // MARK: - panGestureRecognized
     public func panGestureRecognized(sender: UIPanGestureRecognizer) {
-
+        
         let scrollView = pageDisplayedAtIndex(currentPageIndex)
-
+        
         let viewHeight = scrollView.frame.size.height
         let viewHalfHeight = viewHeight/2
-
+        
         var translatedPoint = sender.translationInView(self.view)
-
+        
         // gesture began
         if sender.state == .Began {
             firstX = scrollView.center.x
             firstY = scrollView.center.y
-
+            
             senderViewForAnimation?.hidden = (currentPageIndex == initialPageIndex)
-
+            
             isDraggingPhoto = true
             setNeedsStatusBarAppearanceUpdate()
         }
-
+        
         translatedPoint = CGPoint(x: firstX, y: firstY + translatedPoint.y)
         scrollView.center = translatedPoint
-
+     
         view.opaque = true
-
+        
         // gesture end
         if sender.state == .Ended {
             if scrollView.center.y > viewHalfHeight+40 || scrollView.center.y < viewHalfHeight-40 {
@@ -470,37 +476,37 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
                     performCloseAnimationWithScrollView(scrollView)
                     return
                 }
-
+                
                 let finalX: CGFloat = firstX
                 var finalY: CGFloat = 0.0
                 let windowHeight = applicationWindow.frame.size.height
-
+                
                 if scrollView.center.y > viewHalfHeight+30 {
                     finalY = windowHeight * 2.0
                 } else {
                     finalY = -(viewHalfHeight)
                 }
-
+                
                 let animationDuration = 0.35
                 UIView.beginAnimations(nil, context: nil)
                 UIView.setAnimationDuration(animationDuration)
                 UIView.setAnimationCurve(UIViewAnimationCurve.EaseIn)
                 scrollView.center = CGPoint(x: finalX, y: finalY)
                 UIView.commitAnimations()
-
+                
                 dismissPhotoBrowser()
-            } else {
-
+             } else {
+            
                 // Continue Showing View
                 isDraggingPhoto = false
                 setNeedsStatusBarAppearanceUpdate()
-
+                
                 let velocityY: CGFloat = 0.35 * sender.velocityInView(self.view).y
                 let finalX: CGFloat = firstX
                 let finalY: CGFloat = viewHalfHeight
-
+                
                 let animationDuration = Double(abs(velocityY) * 0.0002 + 0.2)
-
+                
                 UIView.beginAnimations(nil, context: nil)
                 UIView.setAnimationDuration(animationDuration)
                 UIView.setAnimationCurve(UIViewAnimationCurve.EaseIn)
@@ -509,41 +515,39 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
             }
         }
     }
-
+    
     // MARK: - perform animation
     public func performPresentAnimation() {
-
+        
         view.alpha = 0.0
         pagingScrollView.alpha = 0.0
-
+        
         if let sender = senderViewForAnimation {
-
+            
             senderViewOriginalFrame = (sender.superview?.convertRect(sender.frame, toView:nil))!
-
+            
             let fadeView = UIView(frame: CGRect(x: 0, y: 0, width: screenWidth, height: screenHeight))
             fadeView.backgroundColor = UIColor.clearColor()
             applicationWindow.addSubview(fadeView)
-
+            
             let imageFromView = senderOriginImage != nil ? senderOriginImage : getImageFromView(sender)
             resizableImageView = UIImageView(image: imageFromView)
             resizableImageView.frame = senderViewOriginalFrame
             resizableImageView.clipsToBounds = true
-            resizableImageView.contentMode = .ScaleToFill
+            resizableImageView.contentMode = .ScaleAspectFit
             applicationWindow.addSubview(resizableImageView)
-
+            
             sender.hidden = true
-
-            let scaleFactor = UIApplication.sharedApplication().statusBarOrientation == .Portrait
-                ? imageFromView.size.width / screenWidth
-                : imageFromView.size.height / screenHeight
-
+            
+            let scaleFactor = max(imageFromView.size.height / screenHeight, imageFromView.size.width / screenWidth)
+            
             let finalImageViewFrame = CGRect(
                 x: (screenWidth/2) - ((imageFromView.size.width / scaleFactor)/2),
                 y: (screenHeight/2) - ((imageFromView.size.height / scaleFactor)/2),
                 width: imageFromView.size.width / scaleFactor,
                 height: imageFromView.size.height / scaleFactor)
-
-
+            
+            
             UIView.animateWithDuration(animationDuration,
                 animations: { () -> Void in
                     self.resizableImageView.frame = finalImageViewFrame
@@ -562,13 +566,13 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
 
                     fadeView.removeFromSuperview()
             })
-
+            
         } else {
-
+            
             let fadeView = UIView(frame: CGRect(x: 0, y: 0, width: screenWidth, height: screenHeight))
             fadeView.backgroundColor = .clearColor()
             applicationWindow.addSubview(fadeView)
-
+            
             UIView.animateWithDuration(animationDuration,
                 animations: { () -> Void in
                     self.doneButton.alpha = 1.0
@@ -581,20 +585,20 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
             })
         }
     }
-
+    
     public func performCloseAnimationWithScrollView(scrollView: SKZoomingScrollView) {
         view.hidden = true
-
+        
         let fadeView = UIView(frame: CGRect(x: 0, y: 0, width: screenWidth, height: screenHeight))
         fadeView.backgroundColor = .blackColor()
         fadeView.alpha = 1.0
         applicationWindow.addSubview(fadeView)
-
+        
         resizableImageView.alpha = 1.0
         resizableImageView.clipsToBounds = true
         resizableImageView.contentMode = .ScaleToFill
         applicationWindow.addSubview(resizableImageView)
-
+        
         UIView.animateWithDuration(animationDuration,
             animations: { () -> () in
                 fadeView.alpha = 0.0
@@ -606,7 +610,7 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
                 self.dismissPhotoBrowser()
         })
     }
-
+    
     public func dismissPhotoBrowser() {
         modalTransitionStyle = .CrossDissolve
         senderViewForAnimation?.hidden = false
@@ -624,7 +628,7 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         UIGraphicsEndImageContext()
         return result
     }
-
+    
     public func imageForPhoto(photo: SKPhotoProtocol) -> UIImage? {
         if photo.underlyingImage != nil {
             return photo.underlyingImage
@@ -633,17 +637,17 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
             return nil
         }
     }
-
+    
     // MARK: - paging
     public func initializePageIndex(index: Int) {
         var i = index
         if index >= numberOfPhotos {
             i = numberOfPhotos - 1
         }
-
+        
         initialPageIndex = i
         currentPageIndex = i
-
+        
         if isViewLoaded() {
             jumpToPageAtIndex(index)
             if isViewActive {
@@ -651,7 +655,7 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
             }
         }
     }
-
+    
     public func jumpToPageAtIndex(index: Int) {
         if index < numberOfPhotos {
             if !isEndAnimationByToolBar {
@@ -664,23 +668,23 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         }
         hideControlsAfterDelay()
     }
-
+    
     public func photoAtIndex(index: Int) -> SKPhotoProtocol {
         return photos[index]
     }
-
+    
     public func gotoPreviousPage() {
         jumpToPageAtIndex(currentPageIndex - 1)
     }
-
+    
     public func gotoNextPage() {
         jumpToPageAtIndex(currentPageIndex + 1)
     }
-
+    
     public func tilePages() {
-
+        
         let visibleBounds = pagingScrollView.bounds
-
+        
         var firstIndex = Int(floor((CGRectGetMinX(visibleBounds) + 10 * 2) / CGRectGetWidth(visibleBounds)))
         var lastIndex  = Int(floor((CGRectGetMaxX(visibleBounds) - 10 * 2 - 1) / CGRectGetWidth(visibleBounds)))
         if firstIndex < 0 {
@@ -695,20 +699,20 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         if lastIndex > numberOfPhotos - 1 {
             lastIndex = numberOfPhotos - 1
         }
-
+       
         for var index = firstIndex; index <= lastIndex; index++ {
             if isDisplayingPageForIndex(index) {
                 continue
             }
-
+            
             let page = SKZoomingScrollView(frame: view.frame, browser: self)
             page.frame = frameForPageAtIndex(index)
             page.tag = index + pageIndexTagOffset
             page.photo = photoAtIndex(index)
-
+            
             visiblePages.insert(page)
             pagingScrollView.addSubview(page)
-
+            
             // if exists caption, insert
             if let captionView = captionViewForPhotoAtIndex(index) {
                 captionView.frame = frameForCaptionView(captionView, index: index)
@@ -718,11 +722,11 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
             }
         }
     }
-
+    
     private func didStartViewingPageAtIndex(index: Int) {
         delegate?.didShowPhotoAtIndex(index)
     }
-
+    
     private func captionViewForPhotoAtIndex(index: Int) -> SKCaptionView? {
         let photo = photoAtIndex(index)
         if let _ = photo.caption {
@@ -732,7 +736,7 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         }
         return nil
     }
-
+    
     public func isDisplayingPageForIndex(index: Int) -> Bool {
         for page in visiblePages {
             if (page.tag - pageIndexTagOffset) == index {
@@ -741,18 +745,18 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         }
         return false
     }
-
+    
     public func pageDisplayedAtIndex(index: Int) -> SKZoomingScrollView {
         var thePage: SKZoomingScrollView = SKZoomingScrollView()
         for page in visiblePages {
             if (page.tag - pageIndexTagOffset) == index {
-                thePage = page
-                break
+               thePage = page
+               break
             }
         }
         return thePage
     }
-
+    
     public func pageDisplayingAtPhoto(photo: SKPhotoProtocol) -> SKZoomingScrollView {
         var thePage: SKZoomingScrollView = SKZoomingScrollView()
         for page in visiblePages {
@@ -763,7 +767,7 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         }
         return thePage
     }
-
+    
     // MARK: - Control Hiding / Showing
     public func cancelControlHiding() {
         if controlVisibilityTimer != nil {
@@ -771,23 +775,23 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
             controlVisibilityTimer = nil
         }
     }
-
+    
     public func hideControlsAfterDelay() {
         // reset
         cancelControlHiding()
         // start
         controlVisibilityTimer = NSTimer.scheduledTimerWithTimeInterval(4.0, target: self, selector: "hideControls:", userInfo: nil, repeats: false)
-
+        
     }
-
+    
     public func hideControls(timer: NSTimer) {
         setControlsHidden(true, animated: true, permanent: false)
     }
-
+    
     public func toggleControls() {
         setControlsHidden(!areControlsHidden(), animated: true, permanent: false)
     }
-
+    
     public func setControlsHidden(hidden: Bool, animated: Bool, permanent: Bool) {
         cancelControlHiding()
         var captionViews = Set<SKCaptionView>()
@@ -796,7 +800,7 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
                 captionViews.insert(page.captionView)
             }
         }
-
+        
         UIView.animateWithDuration(0.35,
             animations: { () -> Void in
                 let alpha: CGFloat = hidden ? 0.0 : 1.0
@@ -810,18 +814,18 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
             },
             completion: { (Bool) -> Void in
         })
-
+        
         if !permanent {
             hideControlsAfterDelay()
         }
-
+        
         setNeedsStatusBarAppearanceUpdate()
     }
-
+    
     public func areControlsHidden() -> Bool {
         return toolBar.alpha == 0.0
     }
-
+    
     // MARK: - Button
     public func doneButtonPressed(sender: UIButton) {
         if currentPageIndex == initialPageIndex {
@@ -834,9 +838,9 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
     // MARK: Action Button
     public func actionButtonPressed() {
         let photo = photoAtIndex(currentPageIndex)
-
+        
         delegate?.willShowActionSheet?(currentPageIndex)
-
+        
         if numberOfPhotos > 0 && photo.underlyingImage != nil {
             if let titles = actionButtonTitles {
                 actionSheet = UIActionSheet()
@@ -874,20 +878,20 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
                 }
             }
         }
-
+        
     }
-
+    
     // MARK: UIActionSheetDelegate
     public func actionSheet(actionSheet: UIActionSheet, didDismissWithButtonIndex buttonIndex: Int) {
         if actionSheet == self.actionSheet {
             self.actionSheet = nil
-
+            
             if buttonIndex != actionSheet.cancelButtonIndex {
                 self.delegate?.didDismissActionSheetWithButtonIndex?(buttonIndex, photoIndex: currentPageIndex)
             }
         }
     }
-
+    
     // MARK: -  UIScrollView Delegate
     public func scrollViewDidScroll(scrollView: UIScrollView) {
         guard isViewActive else {
@@ -896,14 +900,14 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
         guard !isPerformingLayout else {
             return
         }
-
+        
         // tile page
         tilePages()
-
+        
         // Calculate current page
         let visibleBounds = pagingScrollView.bounds
         var index = Int(floor(CGRectGetMidX(visibleBounds) / CGRectGetWidth(visibleBounds)))
-
+        
         if index < 0 {
             index = 0
         }
@@ -918,15 +922,15 @@ public class SKPhotoBrowser: UIViewController, UIScrollViewDelegate, UIActionShe
             loadAdjacentPhotosIfNecessary(photoAtIndex(currentPageIndex))
         }
     }
-
+    
     public func scrollViewWillBeginDragging(scrollView: UIScrollView) {
         setControlsHidden(true, animated: true, permanent: false)
     }
-
+    
     public func scrollViewDidEndDecelerating(scrollView: UIScrollView) {
         hideControlsAfterDelay()
     }
-
+    
     public func scrollViewDidEndScrollingAnimation(scrollView: UIScrollView) {
         isEndAnimationByToolBar = true
     }
